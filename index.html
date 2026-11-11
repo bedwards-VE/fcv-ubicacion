@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programa FCV</title>
+<style>
+body{margin:0;font-family:Montserrat,Arial,sans-serif;background:#f6f3ee;color:#222;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center}
+.card{max-width:420px;width:100%;padding:32px 20px;box-sizing:border-box}
+h1{font-size:20px;margin:0 0 16px}
+p{font-size:16px;line-height:1.4}
+.btn{display:block;width:100%;box-sizing:border-box;margin:12px 0;padding:14px;border:0;border-radius:6px;background:#7b6a4f;color:#fff;font-size:17px;text-decoration:none;cursor:pointer;font-family:inherit}
+.sec{background:#fff;color:#7b6a4f;border:1px solid #7b6a4f}
+</style>
+</head>
+<body>
+<div class="card">
+<h1 id="titulo">Programa FCV</h1>
+<p id="estado">Cargando...</p>
+<div id="acciones"></div>
+</div>
+<script>
+var FORMS = {
+  contacto: {
+    nombre: "Nuevo contacto",
+    url: "https://docs.google.com/forms/d/e/1FAIpQLSdPAyaorqdN9fhRhoJNCpvZGpGzOuStQLGoSfT5khifdk2BVQ/viewform",
+    entry: "1393893715"
+  },
+  visita: {
+    nombre: "Registrar visita",
+    url: "https://docs.google.com/forms/d/e/1FAIpQLScwW2OvCd5NKPGa3DMY11-OWUTojgHHEX1qSK9IVv-X1D1NkA/viewform",
+    entry: "2023095953"
+  }
+};
+var tipo = new URLSearchParams(location.search).get("f");
+var form = FORMS[tipo];
+
+function el(id) { return document.getElementById(id); }
+
+function boton(texto, href, clase, fn) {
+  var a = document.createElement(href ? "a" : "button");
+  a.className = "btn" + (clase ? " " + clase : "");
+  a.textContent = texto;
+  if (href) a.href = href;
+  if (fn) a.onclick = fn;
+  el("acciones").appendChild(a);
+}
+
+function urlForm(loc) {
+  return form.url + "?usp=pp_url" + (loc ? "&entry." + form.entry + "=" + encodeURIComponent(loc) : "");
+}
+
+function fallo(msg) {
+  el("estado").textContent = msg;
+  el("acciones").innerHTML = "";
+  boton("Reintentar", null, "", pedirUbicacion);
+  boton("Continuar sin ubicación", urlForm(""), "sec");
+}
+
+function pedirUbicacion() {
+  el("acciones").innerHTML = "";
+  el("estado").textContent = "Obteniendo tu ubicación... Si el teléfono lo pide, toca Permitir.";
+  if (!navigator.geolocation) { fallo("Este teléfono no permite obtener la ubicación."); return; }
+  var listo = false;
+  var t = setTimeout(function () {
+    if (!listo) { listo = true; fallo("La ubicación está tardando demasiado."); }
+  }, 15000);
+  navigator.geolocation.getCurrentPosition(
+    function (p) {
+      if (listo) return;
+      listo = true;
+      clearTimeout(t);
+      var loc = p.coords.latitude.toFixed(6) + "," + p.coords.longitude.toFixed(6);
+      el("estado").textContent = "Ubicación obtenida. Abriendo el formulario...";
+      location.replace(urlForm(loc));
+      setTimeout(function () { boton("Abrir formulario", urlForm(loc)); }, 2000);
+    },
+    function (e) {
+      if (listo) return;
+      listo = true;
+      clearTimeout(t);
+      fallo(e.code === 1
+        ? "No se dio permiso para usar la ubicación. Puedes activarlo en los permisos de ubicación del navegador y reintentar."
+        : "No se pudo obtener la ubicación.");
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+  );
+}
+
+if (form) {
+  el("titulo").textContent = "Programa FCV: " + form.nombre;
+  pedirUbicacion();
+} else {
+  el("estado").textContent = "Elige el formulario:";
+  boton("Ingresar un nuevo contacto", "?f=contacto");
+  boton("Registrar una visita", "?f=visita");
+}
+</script>
+</body>
+</html>
